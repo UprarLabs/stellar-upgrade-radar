@@ -69,7 +69,7 @@ pub enum Kind {
 }
 
 /// A single analysis result for one rule at one location.
-#[derive(Serialize)]
+#[derive(Serialize, Debug)]
 pub struct Finding {
     pub rule_id: String,
     pub title: String,

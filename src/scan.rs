@@ -5,11 +5,14 @@ use std::io::Read;
 use std::path::{Path, PathBuf};
 
 /// A text file handed to every rule, with a repo-relative path, its raw content,
-/// and pre-split lines (1-indexed when enumerated).
+/// and pre-split lines (1-indexed when enumerated). `abs_path` is the canonical
+/// on-disk path (when known) so file-anchored rules can consult sibling files
+/// such as a `Cargo.lock`; it is `None` for synthetic in-memory contexts.
 pub struct FileCtx {
     pub rel_path: String,
     pub content: String,
     pub lines: Vec<String>,
+    pub abs_path: Option<PathBuf>,
 }
 
 impl FileCtx {
@@ -19,6 +22,7 @@ impl FileCtx {
             rel_path: rel_path.to_string(),
             content: content.to_string(),
             lines: content.lines().map(|l| l.to_string()).collect(),
+            abs_path: None,
         }
     }
 
@@ -33,7 +37,14 @@ impl FileCtx {
             .unwrap_or(path)
             .to_string_lossy()
             .replace('\\', "/");
-        Some(Self::from_source(&rel, &content))
+        let abs = path.canonicalize().ok();
+        let lines: Vec<String> = content.lines().map(|l| l.to_string()).collect();
+        Some(Self {
+            rel_path: rel,
+            content,
+            lines,
+            abs_path: abs,
+        })
     }
 }
 
@@ -104,6 +115,12 @@ mod tests {
         let ctx = FileCtx::from_source("a.rs", "one\ntwo\n");
         assert_eq!(ctx.lines.len(), 2);
         assert_eq!(ctx.lines[1], "two");
+    }
+
+    #[test]
+    fn from_source_has_no_abs_path() {
+        let ctx = FileCtx::from_source("a.rs", "hi\n");
+        assert!(ctx.abs_path.is_none());
     }
 
     #[test]

@@ -82,3 +82,30 @@ without a proven mechanism, the finding must be `manual_review`, Low severity.
 - SDK-version comparison is verified only where crates.io versioning maps to the
   protocol version (`stellar-xdr`, `soroban-sdk`). Other ecosystems report
   presence with a manual-review recommendation.
+- `SUR-1002` resolves the nearest `Cargo.lock` and treats the resolved version
+  as authoritative: a manifest pin below 30 is a High defect, and a stale
+  lockfile (manifest declares 30 but the lockfile resolves an older version) is
+  also a High defect. Renamed dependencies (`package = "..."`) and workspace
+  field syntax (`dep.workspace = true`) resolve to the real crate name. If no
+  lockfile is found, ranges and git/path/workspace dependencies are low-severity
+  manual-review candidates (uncertainty reported, not guessed). When a lockfile
+  lists multiple versions of a crate, the first is used (order-dependent); the
+  actually-resolved version requires manual confirmation. `soroban-sdk < 30` is
+  a manual-review candidate, not a contract break, because existing contracts
+  remain compatible after the upgrade.
+- `SUR-1003` is **block-aware** (brace-depth tracked): a file that mixes an
+  updated decoder with a legacy one is caught (only the legacy block is flagged),
+  and a block that already enumerates the `_MS` arms is not flagged. Arms must
+  place the arm name and `=>` on the same line (multiline arms are missed), and
+  a numeric `case` arm sharing the `match`/`switch` keyword line is missed
+  (named arms with `=>` on that line are detected). Brace counting does not
+  strip string/char literals, so braces inside literals can mis-track nesting.
+  Arms whose `_MS` handling lives in a called helper remain out of scope
+  (manual review).
+- `SUR-1001` strips comments with a string-aware scanner, so `//` and `/*`
+  inside `"..."`/`'...'` literals are preserved (a URL like `"https://..."` is
+  not truncated); a `// address` comment no longer creates a false-positive
+  context. A `// allowlist` comment on the same line as an allowlist can still
+  suppress a finding (documented false negative); string/packed allowlists and
+  char arrays of < 3 strkey chars are not flagged.
+

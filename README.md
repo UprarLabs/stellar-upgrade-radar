@@ -140,6 +140,23 @@ See [`CONTRIBUTING.md`](CONTRIBUTING.md).
 - **No false-positive elimination beyond fixtures.** Treat `static` findings as
   evidence requiring confirmation; treat `manual_review` findings as a prompt
   for a human to confirm.
+- **`SUR-1002` resolves the nearest `Cargo.lock`.** The resolved version is
+  authoritative: a stale lockfile (manifest says 30, lockfile resolves 28) is a
+  High finding, and a range is resolved by the lockfile. If no lockfile is
+  found, ranges and git/path/workspace dependencies fall back to low-severity
+  manual-review candidates. When a lockfile lists **multiple versions** of a
+  crate, the **first is used (order-dependent)** — confirm the actually-resolved
+  version manually. `soroban-sdk < 30` is a manual-review candidate (existing
+  contracts stay compatible after the upgrade).
+- **`SUR-1003` is block-aware, not exhaustive.** It does **not** imply
+  comprehensive decoder coverage: a file mixing an updated decoder with a
+  legacy one is caught (only the legacy block is flagged), and a block that
+  enumerates the `_MS` arms is not flagged. **Multiline arms** (arm name and
+  `=>` on different lines) are not detected, and a **numeric `case` arm sharing
+  the `match`/`switch` keyword line** is not detected (a *named* arm with `=>`
+  on that line is detected). Brace counting does not ignore braces inside
+  string/char literals, so braces inside literals can mis-track nesting. Arms
+  whose `_MS` handling lives in a called helper are out of scope.
 - **Protocol 30 has not yet activated on mainnet** at the time of writing.
   Findings describe structural risk relative to the announced upgrade.
 

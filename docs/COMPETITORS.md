@@ -42,8 +42,11 @@ version readiness in one report).
 
 - "No dedicated tool exists" is bounded to this search; undiscovered tools may
   exist.
-- The stellar-xdr crate gates the CAP-88 arms behind the `MS_CLOSE_TIME`
-  feature flag (`#ifdef MS_CLOSE_TIME` in the `.x` files, per stellar-protocol
-  discussion #1896). Detecting "compiles stellar-xdr without the ms feature" is a
-  planned extension (see `docs/MAINTAINER-READINESS.md`, task #5); it is **not**
-  implemented yet, so `SUR-1002` reports the crate version only.
+- stellar-xdr 30.0.0: a docs.rs/crates.io features scan of the released crate
+  shows **no** `MS_CLOSE_TIME` consumer feature — the `#ifdef MS_CLOSE_TIME`
+  directives in stellar-protocol's `.x` files are a source-branch development
+  concern (next/curr branch workflow, discussion #1896), not a published toggle.
+  Therefore the released Protocol 30 crate decodes the CAP-88 millisecond arms by
+  default, and `SUR-1002`'s version check (`stellar-xdr >= 30`) is not a false
+  negative. Detecting "compiles a non-default XDR feature" remains a planned
+  extension (see `docs/MAINTAINER-READINESS.md`, task #5).

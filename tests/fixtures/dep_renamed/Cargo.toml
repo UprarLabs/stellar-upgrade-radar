@@ -1,0 +1,7 @@
+[package]
+name = "renamed-dep"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+stellar_xdr = { package = "stellar-xdr", version = "28.0.1" }

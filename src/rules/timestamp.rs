@@ -50,9 +50,9 @@ impl Rule for TimestampRule {
             let second_assumption = lower.contains("one ledger later")
                 || lower.contains("at least one second")
                 || lower.contains("seconds later")
-                || lower.contains("1 second")
-                || lower.contains("one second")
-                || lower.contains("per ledger");
+                || lower.contains("1 second later")
+                || lower.contains(">= 1 second")
+                || lower.contains("more than one second");
             if time_ref && second_assumption {
                 out.push(
                     Finding::new(self.id(), self.title(), self.severity(), Confidence::Low, Kind::ManualReview, &ctx.rel_path)
