@@ -1,13 +1,11 @@
 # Supported Rust toolchain
 
 The project is built and tested with the Rust stable toolchain. Any recent
-stable release is supported; the CI configuration pins a recent stable.
+stable release is supported; CI pins a recent stable via `rustup default stable`.
 
 # Build output
 
 /target
-Cargo.lock  # generated; do not commit binaries
-Cargo.toml.bak
 
 # Editor / OS cruft
 
