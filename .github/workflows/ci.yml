@@ -1,0 +1,36 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  test:
+    name: fmt, clippy, test
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Rust toolchain
+        run: |
+          rustup default stable
+          rustup component add rustfmt clippy
+
+      - name: cargo fmt --check
+        run: cargo fmt --check
+
+      - name: cargo clippy (deny warnings)
+        run: cargo clippy --all-targets --all-features -- -D warnings
+
+      - name: cargo test
+        run: cargo test --all-targets
+
+      - name: CLI smoke test
+        run: |
+          cargo build --release
+          ./target/release/stellar-upgrade-radar --version
+          ./target/release/stellar-upgrade-radar --help
+          ./target/release/stellar-upgrade-radar check ./tests/fixtures --format json > /dev/null || true

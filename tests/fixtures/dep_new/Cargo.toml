@@ -1,0 +1,8 @@
+[package]
+name = "current-deps"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+stellar-xdr = "30.0.0"
+soroban-sdk = "30.0.0-rc.1"

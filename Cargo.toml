@@ -1,0 +1,25 @@
+[package]
+name = "stellar-upgrade-radar"
+version = "0.1.0"
+edition = "2021"
+authors = ["UprarLabs contributors"]
+license = "MIT OR Apache-2.0"
+description = "Evidence-driven static analysis for Stellar protocol upgrade compatibility."
+repository = "https://github.com/UprarLabs/stellar-upgrade-radar"
+
+[[bin]]
+name = "stellar-upgrade-radar"
+path = "src/main.rs"
+
+[lib]
+name = "stellar_upgrade_radar"
+path = "src/lib.rs"
+
+[dependencies]
+clap = { version = "4", features = ["derive"] }
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+
+[profile.release]
+strip = true
+lto = true

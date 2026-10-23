@@ -1,0 +1,7 @@
+[package]
+name = "git-dep"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+stellar-xdr = { git = "https://github.com/stellar/stellar-xdr" }

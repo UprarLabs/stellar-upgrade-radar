@@ -1,0 +1,7 @@
+[package]
+name = "old-deps"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+stellar-xdr = "28.0.1"
