@@ -1,3 +1,4 @@
+
                                  Apache License
                            Version 2.0, January 2004
                         http://www.apache.org/licenses/
@@ -29,8 +30,8 @@
 
       "Object" form shall mean any form resulting from mechanical
       transformation or translation of a Source form, including but
-      not limited to compiled object code, generated documentation, and
-      conversions to other media types.
+      not limited to compiled object code, generated documentation,
+      and conversions to other media types.
 
       "Work" shall mean the work of authorship, whether in Source or
       Object form, made available under the License, as indicated by a
@@ -53,23 +54,22 @@
       the copyright owner. For the purposes of this definition, "submitted"
       means any form of electronic, verbal, or written communication sent
       to the Licensor or its representatives, including but not limited to
-      communication on electronic mailing lists, source code control systems
-      (such as Git) and issue tracking systems that are managed by, or on
-      behalf of, the Licensor for the purpose of discussing and improving the
-      Work, but excluding communication that is conspicuously marked or
-      otherwise designated in writing by the copyright owner as "Not a
-      Contribution."
+      communication on electronic mailing lists, source code control systems,
+      and issue tracking systems that are managed by, or on behalf of, the
+      Licensor for the purpose of discussing and improving the Work, but
+      excluding communication that is conspicuously marked or otherwise
+      designated in writing by the copyright owner as "Not a Contribution."
 
       "Contributor" shall mean Licensor and any individual or Legal Entity
-      on behalf of whom a Contribution has been received by the Work and
+      on behalf of whom a Contribution has been received by Licensor and
       subsequently incorporated within the Work.
 
    2. Grant of Copyright License. Subject to the terms and conditions of
       this License, each Contributor hereby grants to You a perpetual,
       worldwide, non-exclusive, no-charge, royalty-free, irrevocable
       copyright license to reproduce, prepare Derivative Works of,
-      publicly display, publicly perform, sublicense, and distribute the Work
-      and such Derivative Works in Source or Object form.
+      publicly display, publicly perform, sublicense, and distribute the
+      Work and such Derivative Works in Source or Object form.
 
    3. Grant of Patent License. Subject to the terms and conditions of
       this License, each Contributor hereby grants to You a perpetual,
@@ -100,7 +100,7 @@
 
       (c) You must retain, in the Source form of any Derivative Works
           that You distribute, all copyright, patent, trademark, and
-          attribution notices from the Source form of the Work
+          attribution notices from the Source form of the Work,
           excluding those notices that do not pertain to any part of
           the Derivative Works; and
 
@@ -118,13 +118,15 @@
           do not modify the License. You may add Your own attribution
           notices within Derivative Works that You distribute, alongside
           or as an addendum to the NOTICE text from the Work, provided
-          that You do not modify the License. You may add Your own
-          copyright statement to Your modifications and may provide
-          additional or different license terms and conditions for use,
-          reproduction, or distribution of the Derivative Works, or
-          any component of the Work, provided Your use, reproduction,
-          and distribution of the Work otherwise complies with the
-          conditions stated in this License.
+          that such additional attribution notices cannot be construed
+          as modifying the License.
+
+      You may add Your own copyright statement to Your modifications and
+      may provide additional or different license terms and conditions
+      for use, reproduction, or distribution of Your modifications, or
+      for any such Derivative Works as a whole, provided Your use,
+      reproduction, and distribution of the Work otherwise complies with
+      the conditions stated in this License.
 
    5. Submission of Contributions. Unless You explicitly state otherwise,
       any Contribution intentionally submitted for inclusion in the Work
@@ -163,15 +165,14 @@
 
    9. Accepting Warranty or Additional Liability. While redistributing
       the Work or Derivative Works thereof, You may choose to offer,
-      and charge a fee for, the acceptance of support, warranty,
-      indemnity, or other liability obligations and/or rights consistent
-      with this License. However, in accepting such obligations, You may
-      act only on Your own behalf and on Your sole responsibility, not
-      on behalf of any other Contributor, and only if You agree to
-      indemnify, defend, and hold each Contributor harmless for any
-      liability incurred by, or claims asserted against, such Contributor
-      by reason of your accepting any such warranty or additional
-      liability.
+      and charge a fee for, acceptance of support, warranty, indemnity,
+      or other liability obligations and/or rights consistent with this
+      License. However, in accepting such obligations, You may act only
+      on Your own behalf and on Your sole responsibility, not on behalf
+      of any other Contributor, and only if You agree to indemnify,
+      defend, and hold each Contributor harmless for any liability
+      incurred by, or claims asserted against, such Contributor by reason
+      of your accepting any such warranty or additional liability.
 
    END OF TERMS AND CONDITIONS
 
@@ -179,13 +180,14 @@
 
       To apply the Apache License to your work, attach the following
       boilerplate notice, with the fields enclosed by brackets "[]"
-      replaced by your own identifying information. (Don't include
+      replaced with your own identifying information. (Don't include
       the brackets!)  The text should be enclosed in the appropriate
-      comment syntax for the file format. We also recommend that this
-      file be reproduced on the web page (if any) that describes the
-      source files.
+      comment syntax for the file format. We also recommend that a
+      file or class name and description of purpose be included on the
+      same "printed page" as the copyright notice for easier
+      identification within third-party archives.
 
-   Copyright 2026 UprarLabs
+   Copyright [yyyy] [name of copyright owner]
 
    Licensed under the Apache License, Version 2.0 (the "License");
    you may not use this file except in compliance with the License.
