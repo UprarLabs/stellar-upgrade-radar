@@ -41,7 +41,7 @@ impl Rule for XdrHeaderRule {
         "CAP-88"
     }
     fn limitations(&self) -> Option<&'static str> {
-        Some("Detects named-arm and numeric-discriminant enumeration only, within match/switch blocks whose opening brace is on the keyword line. Arms must place the arm name and `=>` on the same line (multiline arms are missed), and a numeric `case` arm sharing the `match`/`switch` keyword line is missed (named arms with `=>` on that line are detected). Brace counting does not strip string/char literals, so braces inside literals can mis-track nesting. Generated bindings, macro-driven or opaque library decoders, and arms whose `_MS` handling lives in a called helper are out of scope; confirm those by manual review.")
+        Some("Detects named-arm and numeric-discriminant enumeration only, within match/switch blocks whose opening brace is on the keyword line. Arm identity is read from the arm pattern (left of `=>`, or a `case` label), so a stellar-value name inside a string literal or a trailing comment cannot change the verdict, and a non-StellarValue match is not flagged. Arms must place the arm name and `=>` on the same line (multiline arms are missed), and a numeric `case` arm sharing the `match`/`switch` keyword line is missed (named arms with `=>` on that line are detected). Brace counting does not strip string/char literals, so braces inside literals can mis-track nesting. Generated bindings, macro-driven or opaque library decoders, and arms whose `_MS` handling lives in a called helper are out of scope; confirm those by manual review.")
     }
 
     fn scan(&self, ctx: &FileCtx) -> Vec<Finding> {
@@ -69,15 +69,23 @@ impl Rule for XdrHeaderRule {
 
             if let Some(block) = blocks.last_mut() {
                 if is_arm_line(line) {
-                    let ms = mentions_ms_arm(&local);
+                    // Classify from the arm *pattern* (left of `=>`, or a `case`
+                    // label) so an `_MS` mention or a stellar-value name inside a
+                    // string literal or a trailing comment does not change the
+                    // verdict, and so a non-StellarValue match is not flagged.
+                    let pat = arm_pattern(line).to_lowercase();
+                    let ms = mentions_ms_arm(&pat);
+                    let named = line_mentions_named_arm(&pat);
+                    let numeric = !ms
+                        && !named
+                        && line.trim_start().starts_with("case ")
+                        && line.contains(':');
                     block.arms.push(Arm {
                         line_no: ln,
                         text: line.clone(),
                         is_ms: ms,
-                        is_named_pre: !ms && line_mentions_named_arm(line),
-                        is_numeric: !ms
-                            && !line_mentions_named_arm(line)
-                            && looks_like_numeric_discriminant_match(line),
+                        is_named_pre: !ms && named,
+                        is_numeric: numeric,
                     });
                 }
             }
@@ -157,6 +165,22 @@ fn is_arm_line(line: &str) -> bool {
     line.contains("=>") || line.trim_start().starts_with("case ")
 }
 
+/// The arm pattern: the text before `=>` (Rust) or before `:` for a `case`
+/// label. Arm identity is read from the pattern, never from string literals or
+/// trailing comments elsewhere on the line.
+fn arm_pattern(line: &str) -> &str {
+    let t = line.trim();
+    if let Some(pos) = t.find("=>") {
+        return t[..pos].trim();
+    }
+    if let Some(rest) = t.strip_prefix("case ") {
+        if let Some(c) = rest.find(':') {
+            return &t[..5 + c];
+        }
+    }
+    t
+}
+
 fn references_ledger_value(lower: &str) -> bool {
     lower.contains("stellarvalue")
         || lower.contains("ledgerheader")
@@ -178,13 +202,6 @@ fn line_mentions_named_arm(line: &str) -> bool {
         || l.contains("stellarvaluetype")
         || l.contains("stellarvaluesigned")
         || l.contains("stellarvalueemptytxset")
-}
-
-fn looks_like_numeric_discriminant_match(line: &str) -> bool {
-    let t = line.trim();
-    (t.starts_with("case ") || t.contains("=>"))
-        && t.contains(':')
-        && !line_mentions_named_arm(line)
 }
 
 #[cfg(test)]
@@ -293,5 +310,49 @@ mod tests {
             f.is_empty(),
             "updated block with a string-literal brace must not be flagged: {f:?}"
         );
+    }
+
+    // ---- adversarial-audit regressions ----
+
+    #[test]
+    fn arm_name_inside_a_string_literal_is_not_an_arm() {
+        // A match over an unrelated enum whose arm string mentions a
+        // stellar-value name must not be flagged.
+        let src = "fn kind(v: &StellarValue) -> &str {\n    match v.level {\n        Level::A => \"stellar_value_signed\",\n        Level::B => \"other\",\n    }\n}\n";
+        let f = XdrHeaderRule.scan(&ctx("x.rs", src));
+        assert!(
+            f.is_empty(),
+            "a string literal arm value must not be flagged: {f:?}"
+        );
+    }
+
+    #[test]
+    fn trailing_comment_does_not_mark_block_updated() {
+        // A `// TODO: StellarValueSignedMs` comment must not suppress the finding.
+        let src = "fn f(v: &StellarValueType) {\n    match v {\n        StellarValueType::StellarValueSigned => a(), // TODO: StellarValueSignedMs\n    }\n}\n";
+        let f = XdrHeaderRule.scan(&ctx("x.rs", src));
+        assert_eq!(f.len(), 1, "legacy arm must still be flagged: {f:?}");
+        assert_eq!(f[0].kind, Kind::Static);
+        assert_eq!(f[0].line, Some(3));
+    }
+
+    #[test]
+    fn helper_named_closetime_ms_does_not_mark_block_updated() {
+        // A helper call named `closetime_ms` on the arm must not suppress the
+        // finding; the `_MS` signal must come from the arm pattern.
+        let src = "fn f(v: &StellarValueType) {\n    match v {\n        StellarValueType::StellarValueSigned => closetime_ms(v),\n    }\n}\n";
+        let f = XdrHeaderRule.scan(&ctx("x.rs", src));
+        assert_eq!(f.len(), 1, "legacy arm must still be flagged: {f:?}");
+        assert_eq!(f[0].kind, Kind::Static);
+    }
+
+    #[test]
+    fn pattern_only_arm_classification_ignores_string_values() {
+        // A named pre-MS arm with a string value that happens to contain the
+        // word "signed" is still classified by its pattern.
+        let src = "fn f(v: &StellarValueType) {\n    match v {\n        StellarValueType::StellarValueSigned => \"signed_value\".into(),\n    }\n}\n";
+        let f = XdrHeaderRule.scan(&ctx("x.rs", src));
+        assert_eq!(f.len(), 1, "the arm pattern is the pre-MS variant: {f:?}");
+        assert_eq!(f[0].kind, Kind::Static);
     }
 }

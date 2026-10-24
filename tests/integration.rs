@@ -324,6 +324,46 @@ fn sur_1002_prerelease_is_unknown() {
 }
 
 #[test]
+fn sur_1001_sur_1003_adversarial_regressions() {
+    let f1 = findings_for("SUR-1001");
+    let f3 = findings_for("SUR-1003");
+    let f1_has = |needle: &str| f1.iter().any(|x| x.file.ends_with(needle));
+    let f3_has = |needle: &str| f3.iter().any(|x| x.file.ends_with(needle));
+
+    // SUR-1001: four reproduced false positives must stay unflagged.
+    for safe in [
+        "w_address_string_context.rs",
+        "w_address_prefix_identifier.rs",
+        "w_address_hex_palette.rs",
+        "w_address_short_string.rs",
+    ] {
+        assert!(!f1_has(safe), "must not flag {safe}: {f1:?}");
+    }
+    // SUR-1001: multi-line allowlist false negative fixed.
+    assert!(
+        f1_has("w_address_multiline.rs"),
+        "multi-line allowlist must be flagged: {f1:?}"
+    );
+
+    // SUR-1003: arm-name-in-string false positive fixed.
+    assert!(
+        !f3_has("xdr_arm_string.rs"),
+        "a string-literal arm value must not be flagged: {f3:?}"
+    );
+    // SUR-1003: trailing-comment and helper-name false negatives fixed.
+    let comment = f3
+        .iter()
+        .find(|x| x.file.ends_with("xdr_arm_comment.rs"))
+        .expect("trailing comment must still flag the legacy arm");
+    assert_eq!(comment.kind, Kind::Static);
+    let helper = f3
+        .iter()
+        .find(|x| x.file.ends_with("xdr_closetime_helper.rs"))
+        .expect("a closetime_ms helper must still flag the legacy arm");
+    assert_eq!(helper.kind, Kind::Static);
+}
+
+#[test]
 fn sur_1003_flags_old_xdr_and_spares_ms_aware_fixture() {
     let files = files_for("SUR-1003");
     assert!(

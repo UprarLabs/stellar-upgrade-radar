@@ -119,17 +119,26 @@ without a proven mechanism, the finding must be `manual_review`, Low severity.
   Stable thresholds are unchanged.
 - `SUR-1003` is **block-aware** (brace-depth tracked): a file that mixes an
   updated decoder with a legacy one is caught (only the legacy block is flagged),
-  and a block that already enumerates the `_MS` arms is not flagged. Arms must
+  and a block that already enumerates the `_MS` arms is not flagged. Arm
+  identity is read from the arm **pattern** (left of `=>`, or a `case` label),
+  so a stellar-value name inside a string literal or a trailing comment cannot
+  change the verdict, and a non-StellarValue match is not flagged. Arms must
   place the arm name and `=>` on the same line (multiline arms are missed), and
   a numeric `case` arm sharing the `match`/`switch` keyword line is missed
   (named arms with `=>` on that line are detected). Brace counting does not
   strip string/char literals, so braces inside literals can mis-track nesting.
   Arms whose `_MS` handling lives in a called helper remain out of scope
   (manual review).
-- `SUR-1001` strips comments with a string-aware scanner, so `//` and `/*`
-  inside `"..."`/`'...'` literals are preserved (a URL like `"https://..."` is
-  not truncated); a `// address` comment no longer creates a false-positive
-  context. A `// allowlist` comment on the same line as an allowlist can still
-  suppress a finding (documented false negative); string/packed allowlists and
-  char arrays of < 3 strkey chars are not flagged.
+- `SUR-1001` strips comments with a string-aware scanner and blanks string/char
+  literal contents, so `//`, `/*` and address/strkey words inside strings or
+  comments do not create context. Context requires strkey/muxed/Soroban-address
+  evidence, an allowlist-named binding, or a strkey-char array used in a
+  validation predicate (`.contains`/`.iter`/`.any`/`.position`); a bare
+  `address`/`prefix` substring in an unrelated identifier is not context. Char
+  allowlists must be an array literal or an allowlist-named binding (an
+  arbitrary short string such as `"GMC"` is not an allowlist), version-byte
+  arrays require a strkey/muxed term in the same declaration, and allowlists may
+  span multiple lines. String/packed allowlists and char arrays of < 3 strkey
+  chars are not flagged; validation delegated to a strkey library is not
+  flagged (correctly, but also not verified).
 
