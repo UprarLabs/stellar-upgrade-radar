@@ -1,0 +1,2 @@
+This is not source code and mentions close_time, one ledger later, at least one second,
+and stellar_value_signed and ['G','M','C'] — none of it should produce a finding.

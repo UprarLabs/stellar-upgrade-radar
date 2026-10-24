@@ -569,3 +569,349 @@ fn cli_min_severity_filters_findings() {
         "High should remain: {ids:?}"
     );
 }
+
+#[test]
+fn empty_and_whitespace_files_produce_no_findings() {
+    // Robustness: a zero-byte file and a whitespace-only file must scan without
+    // panicking and produce no findings.
+    let report = analyze(&fixtures_root().join("empty"), Severity::Info);
+    assert_eq!(
+        report.summary.findings, 0,
+        "empty/whitespace files must not produce findings"
+    );
+    assert!(
+        report.summary.files_scanned >= 2,
+        "the empty fixtures must still be scanned"
+    );
+}
+
+#[test]
+fn non_source_file_yields_only_manual_review_candidates() {
+    // A prose file that mentions timing/address words must not produce a
+    // confident static verdict; at most a Low/ManualReview candidate. This
+    // pins the rule that ambiguous input is a manual-review candidate, never an
+    // over-confident static finding.
+    let report = analyze(&fixtures_root().join("unrelated"), Severity::Info);
+    assert!(
+        !report.findings.is_empty(),
+        "the prose mentions a timing assumption, so a candidate is expected"
+    );
+    for f in &report.findings {
+        assert_eq!(
+            f.severity,
+            Severity::Low,
+            "no confident verdict on prose: {f:?}"
+        );
+        assert_eq!(
+            f.kind,
+            Kind::ManualReview,
+            "prose must be a manual-review candidate: {f:?}"
+        );
+    }
+}
+
+#[test]
+fn scan_is_deterministic_in_order_and_content() {
+    let a = analyze(&fixtures_root(), Severity::Info);
+    let b = analyze(&fixtures_root(), Severity::Info);
+    // Findings and summary are deterministic across runs; only the report's
+    // `scanned_at_epoch` timestamp differs.
+    let key = |f: &Finding| {
+        (
+            f.rule_id.clone(),
+            f.file.clone(),
+            f.line,
+            f.column,
+            f.kind,
+            f.severity,
+        )
+    };
+    let ka: Vec<_> = a.findings.iter().map(key).collect();
+    let kb: Vec<_> = b.findings.iter().map(key).collect();
+    assert_eq!(
+        ka, kb,
+        "finding order and content must be stable across runs"
+    );
+    assert_eq!(a.summary.findings, b.summary.findings);
+    assert_eq!(a.summary.by_rule, b.summary.by_rule);
+    assert_eq!(a.summary.files_with_findings, b.summary.files_with_findings);
+    // Emitted in a stable (file, rule) order.
+    let mut sorted = ka.clone();
+    sorted.sort_by_key(|x| (x.1.clone(), x.0.clone()));
+    assert_eq!(
+        ka, sorted,
+        "findings must be emitted in a stable (file, rule) order"
+    );
+}
+
+#[test]
+fn json_summary_counts_are_consistent() {
+    let report = analyze(&fixtures_root(), Severity::Info);
+    let json = serde_json::to_string(&report).expect("serialize");
+    let v: serde_json::Value = serde_json::from_str(&json).expect("valid JSON");
+    let by_rule = v["summary"]["by_rule"]
+        .as_object()
+        .expect("by_rule present");
+    let total: u64 = by_rule.values().map(|x| x.as_u64().unwrap()).sum();
+    assert_eq!(
+        total,
+        v["summary"]["findings"].as_u64().unwrap(),
+        "by_rule must sum to findings"
+    );
+    assert!(
+        v["summary"]["files_with_findings"].as_u64().unwrap() > 0,
+        "files_with_findings must be reported"
+    );
+    assert!(
+        v["target"]["scanned_at_epoch"].is_u64(),
+        "scan metadata must be present"
+    );
+    assert!(
+        v["notices"].as_array().is_some_and(|a| !a.is_empty()),
+        "notices must be present and non-empty"
+    );
+    let ids: Vec<&str> = v["rules"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .map(|r| r["id"].as_str().unwrap())
+        .collect();
+    assert_eq!(ids, vec!["SUR-1001", "SUR-1002", "SUR-1003", "SUR-1004"]);
+}
+
+#[test]
+fn cli_min_severity_info_shows_all_findings() {
+    // The `info` floor must not filter anything, so Low findings appear.
+    let out = Command::new(bin())
+        .args([
+            "check",
+            fixtures_root().to_str().unwrap(),
+            "--format",
+            "json",
+            "--min-severity",
+            "info",
+        ])
+        .output()
+        .expect("run");
+    assert_eq!(out.status.code(), Some(1), "findings present => exit 1");
+    let v: serde_json::Value = serde_json::from_slice(&out.stdout).expect("JSON");
+    let ids: Vec<String> = v["findings"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .map(|f| f["rule_id"].as_str().unwrap().to_string())
+        .collect();
+    assert!(
+        ids.iter().any(|id| id == "SUR-1004"),
+        "Low findings must be included at the info floor: {ids:?}"
+    );
+    assert!(
+        ids.iter().any(|id| id == "SUR-1001"),
+        "High findings must be included at the info floor: {ids:?}"
+    );
+}
+
+#[test]
+fn cli_invalid_min_severity_exits_2() {
+    let out = Command::new(bin())
+        .args([
+            "check",
+            fixtures_root().to_str().unwrap(),
+            "--min-severity",
+            "bogus",
+        ])
+        .output()
+        .expect("run");
+    assert_eq!(out.status.code(), Some(2), "invalid severity => exit 2");
+}
+
+fn run_cli(args: &[&str]) -> serde_json::Value {
+    let out = Command::new(bin()).args(args).output().expect("run");
+    assert!(
+        matches!(out.status.code(), Some(0) | Some(1)),
+        "expected exit 0/1, got {:?} for {args:?}",
+        out.status.code()
+    );
+    serde_json::from_slice(&out.stdout).expect("JSON")
+}
+
+#[test]
+fn cli_sarif_output_is_well_formed() {
+    let v = run_cli(&[
+        "check",
+        fixtures_root().to_str().unwrap(),
+        "--format",
+        "sarif",
+    ]);
+    assert_eq!(v["version"], "2.1.0");
+    assert!(v["$schema"].as_str().unwrap().contains("sarif-2.1.0"));
+    let run = &v["runs"][0];
+    assert_eq!(run["columnKind"], "unicodeCodePoints");
+    let driver = &run["tool"]["driver"];
+    assert_eq!(driver["name"], "stellar-upgrade-radar");
+    assert_eq!(driver["version"], "0.1.0");
+    assert_eq!(
+        driver["informationUri"],
+        "https://github.com/UprarLabs/stellar-upgrade-radar"
+    );
+    let rule_ids: Vec<&str> = driver["rules"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .map(|r| r["id"].as_str().unwrap())
+        .collect();
+    assert_eq!(
+        rule_ids,
+        vec!["SUR-1001", "SUR-1002", "SUR-1003", "SUR-1004"]
+    );
+    let results = run["results"].as_array().unwrap();
+    assert!(!results.is_empty());
+    for r in results {
+        let rid = r["ruleId"].as_str().unwrap();
+        assert!(
+            rule_ids.contains(&rid),
+            "ruleId must reference driver.rules: {r}"
+        );
+        let idx = r["ruleIndex"].as_u64().unwrap() as usize;
+        assert_eq!(rule_ids[idx], rid, "ruleIndex must match ruleId");
+        assert!(
+            r["message"]["text"].as_str().is_some_and(|s| !s.is_empty()),
+            "message.text must be present"
+        );
+        let level = r["level"].as_str().unwrap();
+        assert!(
+            ["error", "warning", "note", "none"].contains(&level),
+            "invalid SARIF level: {level}"
+        );
+    }
+    assert!(
+        run["properties"]["notices"]
+            .as_array()
+            .is_some_and(|a| !a.is_empty()),
+        "notices must be present"
+    );
+}
+
+#[test]
+fn cli_sarif_preserves_manual_review_kind() {
+    let v = run_cli(&[
+        "check",
+        fixtures_root().to_str().unwrap(),
+        "--format",
+        "sarif",
+    ]);
+    let results = v["runs"][0]["results"].as_array().unwrap();
+    let mr: Vec<&serde_json::Value> = results
+        .iter()
+        .filter(|r| r["properties"]["kind"] == "manual_review")
+        .collect();
+    assert!(
+        !mr.is_empty(),
+        "manual_review results must be preserved, not dropped"
+    );
+    for r in &mr {
+        assert_eq!(r["properties"]["severity"], "low");
+        assert_eq!(r["properties"]["confidence"], "low");
+        assert_ne!(
+            r["level"], "error",
+            "a manual-review candidate must not be reported as an error"
+        );
+    }
+}
+
+#[test]
+fn cli_json_format_is_unchanged() {
+    // Regression: --format json must keep the previous contract.
+    let v = run_cli(&[
+        "check",
+        fixtures_root().to_str().unwrap(),
+        "--format",
+        "json",
+    ]);
+    assert_eq!(v["schema_version"], "1.0");
+    assert_eq!(v["tool"]["name"], "stellar-upgrade-radar");
+    assert_eq!(v["target"]["protocol_version"], 30);
+    assert_eq!(v["target"]["protocol_name"], "Bell");
+    assert!(v["findings"].is_array());
+    assert!(v["summary"]["by_rule"].is_object());
+    assert!(v["summary"]["files_with_findings"].is_number());
+    assert!(v["notices"].as_array().is_some_and(|a| !a.is_empty()));
+}
+
+#[test]
+fn cli_sarif_is_deterministic() {
+    let a = run_cli(&[
+        "check",
+        fixtures_root().to_str().unwrap(),
+        "--format",
+        "sarif",
+    ]);
+    let b = run_cli(&[
+        "check",
+        fixtures_root().to_str().unwrap(),
+        "--format",
+        "sarif",
+    ]);
+    assert_eq!(a, b, "SARIF output must be deterministic across runs");
+}
+
+#[test]
+fn cli_sarif_partial_fingerprints_are_stable() {
+    let a = run_cli(&[
+        "check",
+        fixtures_root().to_str().unwrap(),
+        "--format",
+        "sarif",
+    ]);
+    let b = run_cli(&[
+        "check",
+        fixtures_root().to_str().unwrap(),
+        "--format",
+        "sarif",
+    ]);
+    let ids = |v: &serde_json::Value| -> Vec<String> {
+        v["runs"][0]["results"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .map(|r| {
+                r["partialFingerprints"]["stellarUpgradeRadarStableId"]
+                    .as_str()
+                    .unwrap()
+                    .to_string()
+            })
+            .collect()
+    };
+    let fa = ids(&a);
+    assert_eq!(fa, ids(&b), "fingerprints must be stable");
+    assert!(!fa.is_empty());
+    assert!(
+        fa.iter()
+            .all(|s| s.len() == 16 && s.chars().all(|c| c.is_ascii_hexdigit())),
+        "fingerprints must be 16-hex stable ids"
+    );
+}
+
+#[test]
+fn cli_sarif_locations_match_snippet_columns() {
+    let v = run_cli(&[
+        "check",
+        fixtures_root().to_str().unwrap(),
+        "--format",
+        "sarif",
+    ]);
+    for r in v["runs"][0]["results"].as_array().unwrap() {
+        let region = &r["locations"][0]["physicalLocation"]["region"];
+        let start_line = region["startLine"].as_u64().unwrap();
+        assert!(start_line >= 1);
+        let snippet = region["snippet"]["text"].as_str().unwrap_or("");
+        if let Some(sc) = region["startColumn"].as_u64() {
+            let idx = snippet.find(['\'', '"']).unwrap_or(0);
+            assert_eq!(
+                sc,
+                (idx + 1) as u64,
+                "startColumn must match the snippet: {snippet:?}"
+            );
+        }
+    }
+}

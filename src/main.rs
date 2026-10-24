@@ -45,6 +45,7 @@ enum Commands {
 enum Format {
     Text,
     Json,
+    Sarif,
 }
 
 fn main() -> ExitCode {
@@ -84,6 +85,15 @@ fn run_check(
                 return ExitCode::from(2);
             }
         },
+        Format::Sarif => {
+            match serde_json::to_string_pretty(&stellar_upgrade_radar::sarif::to_sarif(&report)) {
+                Ok(s) => println!("{s}"),
+                Err(e) => {
+                    eprintln!("error: failed to serialize SARIF report: {e}");
+                    return ExitCode::from(2);
+                }
+            }
+        }
         Format::Text => {
             println!(
                 "stellar-upgrade-radar {} — target: {}",

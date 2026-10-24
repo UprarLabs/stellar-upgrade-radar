@@ -57,6 +57,15 @@ impl Rule for WAddressRule {
         }
         let mut findings = Vec::new();
         for (ln, unit) in array_units(&ctx.lines) {
+            // The snippet and column must refer to the same (trimmed) text so the
+            // reported location is accurate.
+            let first = ctx
+                .lines
+                .get(ln - 1)
+                .map(|s| s.trim())
+                .unwrap_or("")
+                .to_string();
+
             // Strategy 1: char/string allowlist enumeration.
             if let Some(found) = char_allowlist_chars(&unit) {
                 let non_w = found
@@ -64,13 +73,12 @@ impl Rule for WAddressRule {
                     .filter(|c| STRKEY_NON_W_CHARS.contains(c))
                     .count();
                 if non_w >= 3 && !found.contains(&W_STRKEY_CHAR) {
-                    let first = unit.lines().next().unwrap_or(&unit);
                     findings.push(emit(
                         self,
                         &ctx.rel_path,
                         ln,
-                        char_allowlist_column(first),
-                        first,
+                        char_allowlist_column(&first),
+                        &first,
                         "This allowlist enumerates known strkey prefixes but omits the W (muxed contract address) variant. After Protocol 30, addresses beginning with W are valid destinations for Stellar Asset Contract transfers and will be rejected here.",
                         "Add the W variant to the allowlist, or replace hand-rolled validation with a maintained strkey library that understands CAP-84.",
                     ));
@@ -88,14 +96,13 @@ impl Rule for WAddressRule {
                     .filter(|b| STRKEY_NON_W_BYTES.contains(b))
                     .count();
                 if non_w_b >= 2 && !bytes.contains(&W_VERSION_BYTE) {
-                    let first = unit.lines().next().unwrap_or(&unit);
-                    let col = unit.find("0x").or_else(|| unit.find("0X")).map(|p| p + 1);
+                    let col = first.find("0x").or_else(|| first.find("0X")).map(|p| p + 1);
                     findings.push(emit(
                         self,
                         &ctx.rel_path,
                         ln,
                         col,
-                        first,
+                        &first,
                         "This version-byte allowlist enumerates known non-W strkey version bytes but omits 0xb0 (STRKEY_MUXED_CONTRACT), so W addresses are rejected.",
                         "Add version byte 0xb0 to the supported set.",
                     ));

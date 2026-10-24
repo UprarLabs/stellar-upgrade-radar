@@ -8,6 +8,7 @@
 
 pub mod report;
 pub mod rules;
+pub mod sarif;
 pub mod scan;
 pub mod sources;
 

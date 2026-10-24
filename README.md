@@ -125,8 +125,9 @@ Go (`go.mod`) and Elixir (`mix.exs` + `mix.lock`) SDKs. See
 Protocol 30 release thresholds per ecosystem.
 
 See [`docs/RULES.md`](docs/RULES.md) for the rule architecture and how to add a
-new rule, and [`docs/PROTOCOL-SOURCES.md`](docs/PROTOCOL-SOURCES.md) for the
-authoritative source registry.
+new rule, [`docs/PROTOCOL-SOURCES.md`](docs/PROTOCOL-SOURCES.md) for the
+authoritative source registry, and [`docs/SARIF.md`](docs/SARIF.md) for the
+`--format sarif` emitter design.
 
 # Development
 
