@@ -85,7 +85,7 @@ cargo test --all-targets
 |---|------|------------------------------|-------------|
 | 1 | Protocol source registry | Yes | No |
 | 2 | JSON report schema | Yes | No |
-| 3 | SDK dependency detection | Yes | No |
+| 3 | SDK dependency detection | Yes | Yes |
 | 4 | W-address rule + fixtures | Yes | No |
 | 5 | XDR / CAP-88 analysis | Yes | No |
 | 6 | GitHub Action integration | Yes | No |

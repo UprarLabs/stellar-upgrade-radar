@@ -1,0 +1,6 @@
+{
+  "name": "js-prerelease-lock",
+  "dependencies": {
+    "@stellar/stellar-sdk": "^17.0.0"
+  }
+}

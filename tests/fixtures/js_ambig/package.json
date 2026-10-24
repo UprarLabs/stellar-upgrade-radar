@@ -1,0 +1,6 @@
+{
+  "name": "js-ambig",
+  "dependencies": {
+    "@stellar/stellar-sdk": "16.3.1"
+  }
+}

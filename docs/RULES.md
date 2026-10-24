@@ -93,6 +93,30 @@ without a proven mechanism, the finding must be `manual_review`, Low severity.
   actually-resolved version requires manual confirmation. `soroban-sdk < 30` is
   a manual-review candidate, not a contract break, because existing contracts
   remain compatible after the upgrade.
+- `SUR-1002` also covers non-Rust SDK ecosystems via `rules::dependency_sdk`:
+  JS/TS (`package.json` + `package-lock.json`/`yarn.lock`/`pnpm-lock.yaml`),
+  Python (`pyproject.toml`/`requirements.txt` + `poetry.lock`/`uv.lock`/
+  `Pipfile.lock`), Go (`go.mod`) and Elixir (`mix.exs` + `mix.lock`). A manifest
+  range is never treated as the resolved version; JS (v17.3.0 / v16.4.x LTS)
+  and Go (v0.8.0) use verified Protocol 30 release thresholds, while Python and
+  Elixir have no verified release and are reported as `manual_review`/unknown.
+  Lockfile parsers are heuristic (line/JSON/TOML/YAML scans), so an unusual
+  lockfile layout can miss a resolution; a manifest exact pin is still reported.
+- Non-Rust specifics: Python matches a dependency **name in dependency context**
+  only (a project/package name such as `my-stellar-sdk-app` is not flagged);
+  Go honours `replace` directives (a replace with a Ready version is not
+  reported, a path replace is unknown) and treats pseudo-versions as unknown;
+  `github.com/stellar/go` (the Go monorepo) is detected as `manual_review`
+  because no verified Protocol 30 release threshold exists for it. JS reads a
+  nested dependency object's `version`, searches for a lockfile up to the
+  project root (monorepo support, bounded by `.git`/depth) and reports
+  `manual_review` when a lockfile lists multiple resolutions for the SDK.
+  Elixir git/path dependencies are reported as unknown (a URL or path is never
+  shown as the version).
+- Prerelease versions (`17.3.0-rc.1`, `v0.8.0-rc.1`) are **never auto-Ready**:
+  their readiness is not provable from the version, so they are reported as
+  `manual_review`/unknown even when the numeric part meets the stable threshold.
+  Stable thresholds are unchanged.
 - `SUR-1003` is **block-aware** (brace-depth tracked): a file that mixes an
   updated decoder with a legacy one is caught (only the legacy block is flagged),
   and a block that already enumerates the `_MS` arms is not flagged. Arms must

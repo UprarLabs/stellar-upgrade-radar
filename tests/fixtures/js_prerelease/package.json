@@ -1,0 +1,7 @@
+{
+  "name": "js-prerelease",
+  "version": "0.1.0",
+  "dependencies": {
+    "@stellar/stellar-sdk": "17.3.0-rc.1"
+  }
+}

@@ -191,6 +191,139 @@ fn sur_1002_lockfile_compliant_suppresses_range_note() {
 }
 
 #[test]
+fn sur_1002_non_rust_ecosystems() {
+    let f = findings_for("SUR-1002");
+    let find = |needle: &str| f.iter().find(|x| x.file.contains(needle));
+
+    // JS: old exact pin -> Medium/Static; ready -> none.
+    let js_old = find("js_old/package.json").expect("js_old finding");
+    assert_eq!(js_old.severity, Severity::Medium);
+    assert_eq!(js_old.kind, Kind::Static);
+    assert!(js_old.explanation.contains("16.3.1"));
+    assert!(
+        find("js_new/package.json").is_none(),
+        "ready JS SDK must not be flagged"
+    );
+
+    // JS: range resolved by the lockfile (^16.0.0 -> 16.3.1) -> Medium/Static.
+    let js_lock = find("js_lock_old/package.json").expect("js_lock_old finding");
+    assert_eq!(js_lock.severity, Severity::Medium);
+    assert!(js_lock.explanation.contains("16.3.1"));
+
+    // JS: a description mentioning an old version must not trigger a finding.
+    assert!(
+        find("js_comment/package.json").is_none(),
+        "non-dependency mention must not be flagged"
+    );
+
+    // Python: no released Protocol 30 SDK -> Low/ManualReview.
+    for path in ["py_req/requirements.txt", "py_pyproject/pyproject.toml"] {
+        let py = find(path).unwrap_or_else(|| panic!("missing {path}"));
+        assert_eq!(py.kind, Kind::ManualReview, "{path}");
+        assert_eq!(py.severity, Severity::Low, "{path}");
+    }
+
+    // Go: v0.7.3 -> Medium/Static; v0.8.0 -> none.
+    let go = find("go_old/go.mod").expect("go_old finding");
+    assert_eq!(go.severity, Severity::Medium);
+    assert_eq!(go.kind, Kind::Static);
+    assert!(go.explanation.contains("v0.7.3"));
+    assert!(
+        find("go_new/go.mod").is_none(),
+        "ready Go SDK must not be flagged"
+    );
+
+    // Elixir: no verified Protocol 30 release -> Low/ManualReview.
+    let ex = find("elixir_mix/mix.exs").expect("elixir finding");
+    assert_eq!(ex.kind, Kind::ManualReview);
+    assert_eq!(ex.severity, Severity::Low);
+}
+
+#[test]
+fn sur_1002_fix_regressions() {
+    let f = findings_for("SUR-1002");
+    let find = |needle: &str| f.iter().find(|x| x.file.contains(needle));
+
+    // Python: a project/package name is not a dependency.
+    assert!(
+        find("py_name/pyproject.toml").is_none(),
+        "a project name must not be flagged"
+    );
+    let pyv = find("py_name_valid/pyproject.toml").expect("valid py dep");
+    assert_eq!(pyv.kind, Kind::ManualReview);
+
+    // Go: replace-with-version is Ready; replace-path / pseudo / alt are manual.
+    assert!(
+        find("go_replace/go.mod").is_none(),
+        "replace to v0.9.0 must be Ready"
+    );
+    let gpath = find("go_replace_path/go.mod").expect("replace path");
+    assert_eq!(gpath.kind, Kind::ManualReview);
+    let gpseudo = find("go_pseudo/go.mod").expect("pseudo-version");
+    assert_eq!(gpseudo.kind, Kind::ManualReview);
+    let galt = find("go_alt/go.mod").expect("alt module");
+    assert_eq!(galt.kind, Kind::ManualReview);
+    let gblock = find("go_require_block/go.mod").expect("require block");
+    assert_eq!(gblock.severity, Severity::Medium);
+
+    // JS nested object extracts the real version.
+    assert!(
+        find("js_nested/package.json").is_none(),
+        "nested 17.3.0 must be Ready"
+    );
+    let jn = find("js_nested_old/package.json").expect("nested old");
+    assert_eq!(jn.severity, Severity::Medium);
+    assert!(jn.explanation.contains("16.3.1"));
+
+    // JS monorepo: the root lockfile resolves the sub-package.
+    let jm = find("js_mono_root/pkg/package.json").expect("monorepo");
+    assert_eq!(jm.severity, Severity::Medium);
+    assert!(jm.explanation.contains("16.3.1"));
+
+    // JS ambiguous lockfile -> manual review, not a confident verdict.
+    let ja = find("js_ambig/package.json").expect("ambiguous lockfile");
+    assert_eq!(ja.kind, Kind::ManualReview);
+
+    // Elixir git dep must not show a URL as the version.
+    let ex = find("elixir_git/mix.exs").expect("elixir git dep");
+    assert_eq!(ex.kind, Kind::ManualReview);
+    assert!(
+        !ex.explanation.contains("kommitters/stellar_sdk"),
+        "must not show a URL as the version"
+    );
+}
+
+#[test]
+fn sur_1002_prerelease_is_unknown() {
+    let f = findings_for("SUR-1002");
+    let find = |needle: &str| f.iter().find(|x| x.file.contains(needle));
+
+    // At the threshold, below it, and lockfile-resolved: Unknown/ManualReview.
+    for path in [
+        "js_prerelease/package.json",
+        "js_prerelease_below/package.json",
+        "js_prerelease_lock/package.json",
+    ] {
+        let x = find(path).unwrap_or_else(|| panic!("missing {path}"));
+        assert_eq!(x.kind, Kind::ManualReview, "{path}");
+        assert_eq!(x.severity, Severity::Low, "{path}");
+    }
+    let g = find("go_prerelease/go.mod").expect("go prerelease");
+    assert_eq!(g.kind, Kind::ManualReview);
+    assert_eq!(g.severity, Severity::Low);
+
+    // Stable thresholds unchanged.
+    assert!(
+        find("js_new/package.json").is_none(),
+        "stable 17.3.0 must stay Ready"
+    );
+    assert!(
+        find("go_new/go.mod").is_none(),
+        "stable v0.8.0 must stay Ready"
+    );
+}
+
+#[test]
 fn sur_1003_flags_old_xdr_and_spares_ms_aware_fixture() {
     let files = files_for("SUR-1003");
     assert!(

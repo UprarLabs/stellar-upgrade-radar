@@ -35,7 +35,7 @@ impl Rule for DependencyRule {
         "Stellar SDK/XDR dependency predates Protocol 30"
     }
     fn description(&self) -> &'static str {
-        "Flags Stellar SDK/XDR dependencies whose resolved (lockfile) or declared version lacks Protocol 30 (CAP-84/CAP-88) definitions. Only stellar-xdr is pinned as a definite break; other cases are manual review."
+        "Flags Stellar SDK/XDR dependencies whose resolved (lockfile) or declared version lacks Protocol 30 (CAP-84/CAP-88) definitions. Covers Rust (stellar-xdr/soroban-sdk) plus JS/TS, Python, Go and Elixir SDKs; only stellar-xdr is pinned as a definite break, other cases are Medium/manual-review."
     }
     fn severity(&self) -> Severity {
         Severity::High
@@ -50,7 +50,7 @@ impl Rule for DependencyRule {
         "CAP-84, CAP-88"
     }
     fn limitations(&self) -> Option<&'static str> {
-        Some("Rust crate truth is verified against crates.io and the nearest Cargo.lock. Workspaces share one lockfile (field syntax `dep.workspace = true` is recognized). When a lockfile lists multiple versions of a crate, the first is used (order-dependent); confirm the actually-resolved version by manual review. Non-Rust ecosystems report presence only.")
+        Some("Rust crate truth is verified against crates.io and the nearest Cargo.lock. Workspaces share one lockfile (field syntax `dep.workspace = true` is recognized). When a lockfile lists multiple versions of a crate, the first is used (order-dependent); confirm the actually-resolved version by manual review. Non-Rust ecosystems (JS/TS, Python, Go, Elixir) are checked from the manifest plus a lockfile (package-lock/yarn/pnpm, poetry/uv/Pipfile, mix.lock); a manifest range is never treated as the resolved version. JS and Go use verified Protocol 30 release thresholds (v16.4.0/v17.3.0 and v0.8.0); Python and Elixir have no verified Protocol 30 release, so they are manual-review. Go honours `replace` directives and treats pseudo-versions and `github.com/stellar/go` as manual-review; Python matches dependency names in context (project names are not flagged); JS resolves monorepo root lockfiles (bounded search) and reports manual-review on ambiguous lockfiles; Elixir git/path deps are unknown. Prerelease versions (e.g. `17.3.0-rc.1`, `v0.8.0-rc.1`) are never auto-Ready — they are reported as manual-review/unknown because prerelease readiness is not provable from the version. Findings report the SDK version, not application runtime or on-chain compatibility.")
     }
 
     fn scan(&self, ctx: &FileCtx) -> Vec<Finding> {
@@ -62,13 +62,8 @@ impl Rule for DependencyRule {
         if name == "Cargo.toml" {
             return self.scan_cargo(ctx);
         }
-        if name == "package.json" {
-            return self.scan_package_json(ctx);
-        }
-        if name == "requirements.txt" || name == "pyproject.toml" || name == "go.mod" {
-            return self.scan_other_ecosystem(ctx);
-        }
-        Vec::new()
+        // JS/TS, Python, Go, Elixir SDK readiness (manifest + lockfile aware).
+        crate::rules::dependency_sdk::scan(ctx)
     }
 }
 
@@ -148,39 +143,6 @@ impl DependencyRule {
                     ManifestReq::PinBelow(_) => {}
                 },
             }
-        }
-        out
-    }
-
-    fn scan_package_json(&self, ctx: &FileCtx) -> Vec<Finding> {
-        let mut out = Vec::new();
-        if ctx.content.contains("@stellar/stellar-sdk") {
-            out.push(manual(
-                self,
-                &ctx.rel_path,
-                1,
-                "@stellar/stellar-sdk",
-                "package.json declares @stellar/stellar-sdk. The Protocol 30 JS SDK release ships updated XDR for CAP-84/88; confirm the resolved version is the Protocol 30 release.",
-                Severity::Low,
-            ));
-        }
-        out
-    }
-
-    fn scan_other_ecosystem(&self, ctx: &FileCtx) -> Vec<Finding> {
-        let mut out = Vec::new();
-        if ctx.content.contains("stellar-sdk")
-            || ctx.content.contains("stellar-base")
-            || ctx.content.contains("stellar/go")
-        {
-            out.push(manual(
-                self,
-                &ctx.rel_path,
-                1,
-                &ctx.rel_path,
-                "Declares a Stellar SDK dependency; confirm it ships Protocol 30 definitions before production use.",
-                Severity::Low,
-            ));
         }
         out
     }
@@ -440,29 +402,6 @@ fn unresolvable_note(rule: &dyn Rule, token: &str, file: &str, line: usize, raw:
         "https://github.com/stellar/stellar-protocol/blob/master/core/cap-0084.md",
     ])
     .recommendation("Pin to the Protocol 30 release or confirm the resolved commit.")
-}
-
-#[allow(clippy::too_many_arguments)]
-fn manual(
-    rule: &dyn Rule,
-    file: &str,
-    line: usize,
-    raw: &str,
-    expl: &str,
-    sev: Severity,
-) -> Finding {
-    Finding::new(
-        rule.id(),
-        rule.title(),
-        sev,
-        Confidence::Low,
-        Kind::ManualReview,
-        file,
-    )
-    .location(line, None, Some(raw))
-    .explanation(expl)
-    .sources(&["https://stellar.org/blog/developers/bell-protocol-30-upgrade-guide"])
-    .recommendation("Confirm against the Protocol 30 SDK release notes, then rerun this scan.")
 }
 
 /// Find the requirement for a dependency in Cargo.toml. Matches a bare key

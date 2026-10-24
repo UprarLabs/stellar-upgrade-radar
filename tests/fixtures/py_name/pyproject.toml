@@ -1,0 +1,4 @@
+[project]
+name = "my-stellar-sdk-app"
+version = "0.1.0"
+dependencies = ["requests>=2.0"]

@@ -1,0 +1,4 @@
+[project]
+name = "py-proj"
+version = "0.1.0"
+dependencies = ["stellar-sdk>=16.0.0"]

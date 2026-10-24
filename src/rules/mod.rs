@@ -23,6 +23,7 @@ pub trait Rule: Sync {
 }
 
 pub mod dependency;
+pub mod dependency_sdk;
 pub mod timestamp;
 pub mod w_address;
 pub mod xdr_header;

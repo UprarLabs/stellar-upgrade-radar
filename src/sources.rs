@@ -39,6 +39,26 @@ pub static SOURCES: &[Source] = &[
         url: "https://github.com/stellar/stellar-protocol/blob/master/core/cap-0087.md",
         claim: "CAP-0087 adds ML-DSA host functions verify_sig_ml_dsa_44/65/87; no backward incompatibilities; network-level signatures remain Ed25519.",
     },
+    Source {
+        id: "js-sdk-protocol-30",
+        url: "https://github.com/stellar/js-stellar-sdk/releases/tag/v17.3.0",
+        claim: "js-stellar-sdk v17.3.0 is titled 'Protocol 30': it adds CAP-84 muxed contract (W…) addresses and regenerates XDR with CAP-84/87/88 (StellarValueType adds stellarValueSignedMs / stellarValueEmptyTxSetMs). The v16.4.0 LTS release is also 'Protocol 30' (regenerated from stellar-xdr v30.0); v17.0.0 is 'Protocol 28'.",
+    },
+    Source {
+        id: "go-sdk-protocol-30",
+        url: "https://github.com/stellar/go-stellar-sdk/releases/tag/v0.8.0",
+        claim: "go-stellar-sdk v0.8.0 'Adds Support for Protocol 30 (CAP-0084, CAP-0087, CAP-0088)'; module path github.com/stellar/go-stellar-sdk.",
+    },
+    Source {
+        id: "py-sdk-protocol-30-pending",
+        url: "https://github.com/StellarCN/py-stellar-base/blob/main/CHANGELOG.md",
+        claim: "py-stellar-base lists CAP-84 (Protocol 30) muxed contract address support under 'Pending' — no released Python SDK version carries Protocol 30 as of 2026-10 (latest tag 16.1.1).",
+    },
+    Source {
+        id: "elixir-sdk",
+        url: "https://github.com/kommitters/stellar_sdk/releases",
+        claim: "kommitters/stellar_sdk latest release v0.23.0 (2026-06-03) has no Protocol 30 / CAP-84 / CAP-88 release note; readiness is unknown.",
+    },
 ];
 
 pub struct Source {
@@ -70,5 +90,17 @@ mod tests {
     fn cap_84_w_byte_is_documented() {
         let cap84 = Source::by_id("cap-84").unwrap();
         assert!(cap84.claim.contains("0xb0"));
+    }
+
+    #[test]
+    fn non_rust_sdk_sources_are_registered() {
+        for id in [
+            "js-sdk-protocol-30",
+            "go-sdk-protocol-30",
+            "py-sdk-protocol-30-pending",
+            "elixir-sdk",
+        ] {
+            assert!(Source::by_id(id).is_some(), "missing source {id}");
+        }
     }
 }

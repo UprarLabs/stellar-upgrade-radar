@@ -117,6 +117,13 @@ across releases; a finding never changes from one rule into another.
 | SUR-1003 | CAP-88  | High     | Medium/Low | Implemented   |
 | SUR-1004 | CAP-88  | Low      | Low        | Manual-review |
 
+`SUR-1002` covers Rust (`Cargo.toml` + `Cargo.lock`) plus the JS/TS
+(`package.json` + `package-lock.json`/`yarn.lock`/`pnpm-lock.yaml`), Python
+(`pyproject.toml`/`requirements.txt` + `poetry.lock`/`uv.lock`/`Pipfile.lock`),
+Go (`go.mod`) and Elixir (`mix.exs` + `mix.lock`) SDKs. See
+[`docs/PROTOCOL-SOURCES.md`](docs/PROTOCOL-SOURCES.md) for the verified
+Protocol 30 release thresholds per ecosystem.
+
 See [`docs/RULES.md`](docs/RULES.md) for the rule architecture and how to add a
 new rule, and [`docs/PROTOCOL-SOURCES.md`](docs/PROTOCOL-SOURCES.md) for the
 authoritative source registry.
@@ -140,14 +147,21 @@ See [`CONTRIBUTING.md`](CONTRIBUTING.md).
 - **No false-positive elimination beyond fixtures.** Treat `static` findings as
   evidence requiring confirmation; treat `manual_review` findings as a prompt
   for a human to confirm.
-- **`SUR-1002` resolves the nearest `Cargo.lock`.** The resolved version is
-  authoritative: a stale lockfile (manifest says 30, lockfile resolves 28) is a
-  High finding, and a range is resolved by the lockfile. If no lockfile is
-  found, ranges and git/path/workspace dependencies fall back to low-severity
-  manual-review candidates. When a lockfile lists **multiple versions** of a
-  crate, the **first is used (order-dependent)** — confirm the actually-resolved
-  version manually. `soroban-sdk < 30` is a manual-review candidate (existing
-  contracts stay compatible after the upgrade).
+- **`SUR-1002` covers Rust and four non-Rust SDK ecosystems.** For Rust it
+  resolves the nearest `Cargo.lock` (a stale lockfile — manifest says 30,
+  lockfile resolves 28 — is a High finding). For JS/TS, Python, Go and Elixir it
+  reads the manifest plus a sibling lockfile; a manifest **range is never
+  treated as the resolved version**. JS (`@stellar/stellar-sdk` >= v17.3.0 or
+  the v16.4.x LTS line) and Go (`github.com/stellar/go-stellar-sdk` >= v0.8.0)
+  use **verified** Protocol 30 release thresholds; Python (`stellar-sdk`) and
+  Elixir (`stellar_sdk`) have no verified Protocol 30 release, so they are
+  reported as `manual_review`/unknown. Findings report the SDK version, not
+  application runtime or on-chain compatibility. Python matches a dependency
+  name in dependency context (a project name is not flagged); Go honours
+  `replace` directives and treats pseudo-versions and the `github.com/stellar/go`
+  monorepo as manual-review; JS reads nested dependency objects, resolves a
+  monorepo's root lockfile (bounded search) and reports manual-review on
+  ambiguous lockfiles; Elixir git/path deps never show a URL as a version.
 - **`SUR-1003` is block-aware, not exhaustive.** It does **not** imply
   comprehensive decoder coverage: a file mixing an updated decoder with a
   legacy one is caught (only the legacy block is flagged), and a block that

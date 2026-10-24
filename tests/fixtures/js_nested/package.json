@@ -1,0 +1,6 @@
+{
+  "name": "js-nested",
+  "dependencies": {
+    "@stellar/stellar-sdk": { "version": "17.3.0" }
+  }
+}

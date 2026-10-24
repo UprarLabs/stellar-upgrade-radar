@@ -28,16 +28,23 @@ generated from this registry.
 |-----|-----|------------|
 | SEP-23 Strkeys | https://github.com/stellar/stellar-protocol/blob/master/ecosystem/sep-0023.md | `STRKEY_MUXED_CONTRACT = 22 << 3`, version byte `0xb0`, first char `W`. Updated 2026-09-18. |
 
-## SDK / XDR releases (verified against crates.io, 2026-10)
+## SDK / XDR releases (verified against official registries/release notes, 2026-10)
 
-| Crate | Protocol 30 line | Prior line |
-|-------|------------------|------------|
-| `stellar-xdr` | 30.0.0 (new `StellarValue` arms, `SC_ADDRESS_TYPE_MUXED_CONTRACT`) | 28.0.1 |
-| `soroban-sdk` | 30.0.0-rc.1 | 29.0.1 |
+| Ecosystem | Package / module | Protocol 30 line | Evidence |
+|-----------|------------------|------------------|----------|
+| Rust | `stellar-xdr` (crates.io) | 30.0.0 | crates.io; carries CAP-84 + CAP-88 XDR |
+| Rust | `soroban-sdk` (crates.io) | 30.0.0-rc.1 | crates.io |
+| JS/TS | `@stellar/stellar-sdk` (npm) | **v17.3.0** and **v16.4.0** (LTS) | release notes titled "Protocol 30"; v17.0.0 is "Protocol 28" |
+| Go | `github.com/stellar/go-stellar-sdk` | **v0.8.0** | release notes "Adds Support for Protocol 30 (CAP-0084/87/88)" |
+| Python | `stellar-sdk` (PyPI, StellarCN/py-stellar-base) | none released | CAP-84 support is under CHANGELOG "Pending" (latest tag 16.1.1) |
+| Elixir | `stellar_sdk` (hex, kommitters) | none released | latest v0.23.0 (2026-06-03) has no Protocol 30 note |
 
 Sources consulted for SDK readiness:
 - https://github.com/stellar/rs-soroban-sdk/releases
-- https://github.com/stellar/js-stellar-sdk/releases (Protocol 30 line ships v17.x; migration guides: https://stellar.github.io/js-stellar-sdk/migration/00-migration)
+- https://github.com/stellar/js-stellar-sdk/releases (Protocol 30 = v17.3.0; LTS v16.4.0; migration guides: https://stellar.github.io/js-stellar-sdk/migration/00-migration)
+- https://github.com/stellar/go-stellar-sdk/releases
+- https://github.com/StellarCN/py-stellar-base/blob/main/CHANGELOG.md
+- https://github.com/kommitters/stellar_sdk/releases
 - https://github.com/stellar/stellar-xdr/releases
 
 ## Implementation references
@@ -48,7 +55,12 @@ Sources consulted for SDK readiness:
 ## Evidence policy
 
 - A rule ships only if the claim above is supported by a listed source.
-- `SUR-1002` compares Rust crate majors against the verified crates.io lines
-  above; other ecosystems emit `manual_review` because no per-SDK verified
-  minimum is hardcoded.
+- `SUR-1002` pins `stellar-xdr` (Rust) as a definite break. For non-Rust
+  ecosystems it derives readiness only where a **verified** Protocol 30 release
+  exists (JS: v16.4.0/v17.3.0; Go: v0.8.0). Python and Elixir have no verified
+  Protocol 30 release, so their findings are `manual_review`/unknown — the tool
+  never guesses a minimum version.
+- A manifest version range is never treated as the resolved version; a sibling
+  lockfile is preferred, and a range that only *might* satisfy the threshold is
+  reported as unknown rather than asserted.
 - This registry is re-checked before each release; stale claims are removed.

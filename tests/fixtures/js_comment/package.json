@@ -1,0 +1,7 @@
+{
+  "name": "js-comment",
+  "description": "historically pinned to @stellar/stellar-sdk 16.0.0",
+  "dependencies": {
+    "@stellar/stellar-sdk": "17.3.0"
+  }
+}

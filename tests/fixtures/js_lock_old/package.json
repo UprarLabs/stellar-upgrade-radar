@@ -1,0 +1,7 @@
+{
+  "name": "js-lock-old",
+  "version": "0.1.0",
+  "dependencies": {
+    "@stellar/stellar-sdk": "^16.0.0"
+  }
+}

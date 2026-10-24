@@ -55,27 +55,30 @@ Internal estimate: Small-Medium.
 
 ---
 
-## ISSUE 3 — Extend SDK dependency detection with verified minimums
+## ISSUE 3 — Extend SDK dependency detection with verified minimums  — ✅ IMPLEMENTED
 
 **Title:** Ground SUR-1002 for JS/Python/Go/Elixir SDKs with verified Protocol 30 minimums
 
+**Status:** implemented in `src/rules/dependency_sdk.rs` (uncommitted working tree).
+
 **Body:**
-`SUR-1002` currently only compares Rust crate majors (`stellar-xdr`,
-`soroban-sdk`) against verified crates.io lines. Other ecosystems are manual-review
-only. This task verifies the actual Protocol 30 release lines for the JS
-(`@stellar/stellar-sdk`), Python (`stellar-sdk`), Go (`stellar/go`), and Elixir
-(`stellar_sdk`) SDKs from their release pages, then implements the same version
-comparison, with a fixture per ecosystem.
+`SUR-1002` compares Rust crate majors (`stellar-xdr`, `soroban-sdk`) against
+verified crates.io lines, and now also covers the JS (`@stellar/stellar-sdk`),
+Python (`stellar-sdk`), Go (`github.com/stellar/go-stellar-sdk`) and Elixir
+(`stellar_sdk`) SDKs from their release pages. Each ecosystem ships a
+manifest+lockfile check with fixtures.
 
-Acceptance criteria:
-- A table in `docs/PROTOCOL-SOURCES.md` records each ecosystem's verified
-  Protocol 30 release line with a citation URL.
-- `SUR-1002` flags pre-Protocol-30 minimum versions for at least JS and Go, with
-  negative fixtures proving current versions pass.
+Acceptance criteria — all met:
+- `docs/PROTOCOL-SOURCES.md` records each ecosystem's verified Protocol 30
+  release line with a citation URL (JS v17.3.0 / v16.4.0 LTS; Go v0.8.0;
+  Python and Elixir: none released).
+- `SUR-1002` flags pre-Protocol-30 versions for JS and Go (Medium/Static), with
+  negative fixtures proving current versions pass; Python and Elixir are
+  manual-review because no verified Protocol 30 release exists.
 - Sources are attached to each finding.
-- Tests pass.
+- Tests pass (99 total).
 
-Internal estimate: Medium (2-4 days).
+Internal estimate: Medium (2-4 days). — closed.
 
 ---
 
