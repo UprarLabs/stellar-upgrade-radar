@@ -906,12 +906,141 @@ fn cli_sarif_locations_match_snippet_columns() {
         assert!(start_line >= 1);
         let snippet = region["snippet"]["text"].as_str().unwrap_or("");
         if let Some(sc) = region["startColumn"].as_u64() {
-            let idx = snippet.find(['\'', '"']).unwrap_or(0);
+            // The column points at the allowlist quote: the first quote that is
+            // immediately followed by a strkey prefix character.
+            let bytes = snippet.as_bytes();
+            let mut allowlist_quote = 0usize;
+            for (i, b) in bytes.iter().enumerate() {
+                if (*b == b'\'' || *b == b'"') && i + 1 < bytes.len() {
+                    let next = bytes[i + 1] as char;
+                    if "GMCBXT".contains(next) {
+                        allowlist_quote = i;
+                        break;
+                    }
+                }
+            }
+            let cp_idx = snippet[..allowlist_quote].chars().count();
             assert_eq!(
                 sc,
-                (idx + 1) as u64,
-                "startColumn must match the snippet: {snippet:?}"
+                (cp_idx + 1) as u64,
+                "startColumn must match the allowlist quote (code points): {snippet:?}"
             );
         }
     }
+}
+
+#[test]
+fn cli_sarif_uri_is_percent_encoded() {
+    // Paths with spaces and reserved characters must be percent-encoded, not
+    // emitted raw (which would break URI resolution).
+    let v = run_cli(&[
+        "check",
+        fixtures_root().to_str().unwrap(),
+        "--format",
+        "sarif",
+    ]);
+    let uris: Vec<String> = v["runs"][0]["results"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .map(|r| {
+            r["locations"][0]["physicalLocation"]["artifactLocation"]["uri"]
+                .as_str()
+                .unwrap()
+                .to_string()
+        })
+        .collect();
+    let space = uris
+        .iter()
+        .find(|u| u.contains("spaces"))
+        .expect("space path");
+    assert_eq!(space, "uri_space/src%20with%20spaces.rs");
+    let special = uris
+        .iter()
+        .find(|u| u.contains("special"))
+        .expect("special path");
+    assert_eq!(special, "uri_special/src%5Bspecial%5D.rs");
+    let unicode = uris
+        .iter()
+        .find(|u| u.contains("unicode"))
+        .expect("unicode path");
+    assert_eq!(unicode, "unicode_column/src_%C3%A9moji.rs");
+    // Ordinary paths are unchanged.
+    assert!(
+        uris.iter().any(|u| u == "w_address_unsafe.rs"),
+        "plain paths must be unmodified: {uris:?}"
+    );
+}
+
+#[test]
+fn cli_sarif_unicode_column_is_codepoint_based() {
+    // Non-ASCII before the allowlist quote must yield a code-point column
+    // consistent with columnKind=unicodeCodePoints, not a raw byte offset.
+    let v = run_cli(&[
+        "check",
+        fixtures_root().to_str().unwrap(),
+        "--format",
+        "sarif",
+    ]);
+    let r = v["runs"][0]["results"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .find(|r| {
+            r["locations"][0]["physicalLocation"]["artifactLocation"]["uri"]
+                .as_str()
+                .unwrap()
+                .contains("same_line")
+        })
+        .expect("unicode same-line fixture");
+    let region = &r["locations"][0]["physicalLocation"]["region"];
+    let snippet = region["snippet"]["text"].as_str().unwrap();
+    // Find the allowlist quote (first quote followed by G/M/C/B/X/T).
+    let bytes = snippet.as_bytes();
+    let mut allowlist_byte = 0usize;
+    for (i, b) in bytes.iter().enumerate() {
+        if (*b == b'\'' || *b == b'"') && i + 1 < bytes.len() {
+            let next = bytes[i + 1] as char;
+            if "GMCBXT".contains(next) {
+                allowlist_byte = i;
+                break;
+            }
+        }
+    }
+    let allowlist_cp = snippet[..allowlist_byte].chars().count();
+    // The non-ASCII chars (é + 𐍈𐍈𐍈 = 4 code points) sit before the allowlist
+    // quote, so the code-point column must be strictly smaller than the byte
+    // column.
+    assert_eq!(
+        region["startColumn"].as_u64().unwrap(),
+        (allowlist_cp + 1) as u64,
+        "startColumn must be a 1-based code-point column: {snippet:?}"
+    );
+    assert!(
+        allowlist_byte > allowlist_cp,
+        "the fixture must have non-ASCII before the allowlist quote (byte {allowlist_byte} > cp {allowlist_cp})"
+    );
+}
+
+#[test]
+fn cli_json_and_text_outputs_are_unchanged_by_sarif_work() {
+    // JSON keeps the plain (unencoded) relative path and its own contract.
+    let v = run_cli(&[
+        "check",
+        fixtures_root().to_str().unwrap(),
+        "--format",
+        "json",
+    ]);
+    let files: Vec<&str> = v["findings"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .map(|f| f["file"].as_str().unwrap())
+        .collect();
+    assert!(
+        files.iter().any(|f| f.ends_with("src with spaces.rs")),
+        "JSON must keep the raw path: {files:?}"
+    );
+    assert!(files.contains(&"w_address_unsafe.rs"));
+    assert_eq!(v["schema_version"], "1.0");
 }

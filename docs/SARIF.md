@@ -31,8 +31,12 @@ The original `severity`, `confidence` and `kind` are preserved verbatim in
   the snippet exactly. This is a conversion, not a relabelling.
 - Exact for ASCII and tabs; a byte offset that lands inside a multibyte UTF-8
   character is mapped to that character's start (see `src/sarif.rs`).
-- `artifactLocation.uri` is the reported file path (`Finding.file`), consistent
-  across JSON and SARIF.
+- `artifactLocation.uri` is the **percent-encoded relative file URI** of the
+  reported file (`encode_uri(&f.file)`, RFC 3986): unreserved characters and `/`
+  are preserved, everything else — spaces, `[`/`]`, `#`, `?`, non-ASCII bytes —
+  is percent-encoded. This is URI encoding, distinct from JSON string escaping.
+  The JSON format keeps the **raw relative path** (`Finding.file`) unchanged, so
+  the two formats intentionally differ.
 - Results without a line (currently none) omit `locations`.
 
 ## Stability
@@ -49,7 +53,7 @@ The original `severity`, `confidence` and `kind` are preserved verbatim in
 rather than as notification descriptors, to avoid referencing a
 `reportingDescriptor` that is not defined in the run.
 
-## Conformance limitation
+- **Conformance limitation**
 
 Conformance is **not** validated with an external SARIF validator (adding one
 would be a new dependency). What is proven is limited to the structure and
@@ -70,7 +74,35 @@ A full schema-conformance check against the SARIF 2.1.0 meta-schema remains
 ## Tests
 
 - Unit: severity mapping (all five), byte→code-point column conversion (ASCII,
-  tab, multibyte), fingerprint stability, top-level structure.
+  tab, multibyte), URI percent-encoding, fingerprint stability, top-level
+  structure.
 - Integration (real CLI): SARIF well-formedness, `manual_review` preservation,
-  JSON regression, determinism, fingerprint stability, and location/column
-  consistency against the fixture corpus.
+  JSON regression, determinism, fingerprint stability, location/column
+  consistency, URI percent-encoding for paths with spaces/reserved characters,
+  and code-point columns for non-ASCII lines.
+
+## Using SARIF output in CI
+
+Run the scanner and save the report as a CI artifact:
+
+```bash
+stellar-upgrade-radar check . --format sarif > stellar-upgrade-radar.sarif
+```
+
+The file is a valid SARIF 2.1.0 document. Two distinct concerns are often
+conflated:
+
+1. **Producing SARIF** — done by this tool; validated against the SARIF 2.1.0
+   schema in tests.
+2. **Uploading SARIF to GitHub Code Scanning** — requires a GitHub Actions
+   workflow with the `codeql-action/upload-sarif` action (or the
+   `github/codeql-action/upload-sarif` step) and a token with
+   `security-events: write` permission. **This repository does not add such a
+   workflow, and does not add that permission**, because uploading was not
+   requested and would need its own tests. Producing a `.sarif` file does not by
+   itself make results appear in Code Scanning.
+
+If you add an upload workflow later, note that GitHub requires
+`artifactLocation.uri` values to be relative to the repository root — this tool
+emits paths relative to the scanned root, so run the scan from the repository
+root (`stellar-upgrade-radar check .`).

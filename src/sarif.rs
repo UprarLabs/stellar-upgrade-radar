@@ -99,6 +99,25 @@ fn result(report: &Report, f: &Finding) -> Value {
     v
 }
 
+/// Percent-encode a path for use as a SARIF `artifactLocation.uri` (RFC 3986).
+/// Unreserved characters (`A-Z a-z 0-9 - . _ ~`) and `/` are kept; everything
+/// else — spaces, `[`, `]`, `#`, `?`, and non-ASCII bytes — is encoded. This is
+/// URI encoding, which is distinct from JSON string escaping (handled by the
+/// serializer) and from path resolution.
+fn encode_uri(path: &str) -> String {
+    let mut out = String::with_capacity(path.len());
+    for b in path.bytes() {
+        let keep = b.is_ascii_alphanumeric() || matches!(b, b'-' | b'.' | b'_' | b'~' | b'/');
+        if keep {
+            out.push(b as char);
+        } else {
+            out.push('%');
+            out.push_str(&format!("{b:02X}"));
+        }
+    }
+    out
+}
+
 fn location(f: &Finding) -> Option<Value> {
     let line = f.line?;
     let snippet = f.snippet.as_deref().unwrap_or("");
@@ -112,7 +131,7 @@ fn location(f: &Finding) -> Option<Value> {
     }
     Some(json!({
         "physicalLocation": {
-            "artifactLocation": { "uri": f.file },
+            "artifactLocation": { "uri": encode_uri(&f.file) },
             "region": region,
         }
     }))
@@ -241,5 +260,18 @@ mod tests {
         assert_eq!(run["columnKind"], "unicodeCodePoints");
         assert_eq!(run["tool"]["driver"]["name"], "stellar-upgrade-radar");
         assert_eq!(run["tool"]["driver"]["informationUri"], REPO_URL);
+    }
+
+    #[test]
+    fn encode_uri_percent_encodes_special_characters() {
+        // Unreserved characters and `/` are preserved.
+        assert_eq!(encode_uri("src/lib.rs"), "src/lib.rs");
+        assert_eq!(encode_uri("a-b_c.d~e"), "a-b_c.d~e");
+        // Spaces, brackets and other reserved characters are percent-encoded.
+        assert_eq!(encode_uri("src with spaces.rs"), "src%20with%20spaces.rs");
+        assert_eq!(encode_uri("src[special].rs"), "src%5Bspecial%5D.rs");
+        assert_eq!(encode_uri("a#b?c"), "a%23b%3Fc");
+        // Non-ASCII is encoded per byte (UTF-8), not per character.
+        assert_eq!(encode_uri("émoji.rs"), "%C3%A9moji.rs");
     }
 }
