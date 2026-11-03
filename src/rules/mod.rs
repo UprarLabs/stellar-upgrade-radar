@@ -22,6 +22,7 @@ pub trait Rule: Sync {
     fn scan(&self, ctx: &FileCtx) -> Vec<Finding>;
 }
 
+pub mod contract_address;
 pub mod dependency;
 pub mod dependency_sdk;
 pub mod timestamp;
@@ -35,6 +36,7 @@ pub fn registry() -> Vec<Box<dyn Rule>> {
         Box::new(dependency::DependencyRule),
         Box::new(xdr_header::XdrHeaderRule),
         Box::new(timestamp::TimestampRule),
+        Box::new(contract_address::ContractAddressRule),
     ]
 }
 

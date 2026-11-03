@@ -141,7 +141,7 @@ without a proven mechanism, the finding must be `manual_review`, Low severity.
   span multiple lines. String/packed allowlists and char arrays of < 3 strkey
   chars are not flagged; validation delegated to a strkey library is not
   flagged (correctly, but also not verified).
-- **Scan scope.** `SUR-1001`, `SUR-1003` and `SUR-1004` scan every readable text
+- **Scan scope.** `SUR-1001`, `SUR-1003`, `SUR-1004` and `SUR-1005` scan every readable text
   file (only `SUR-1002` filters by manifest filename). A prose or documentation
   file that happens to mention a pattern therefore yields at most a
   **Low/`manual_review` candidate** — never a confident `static` verdict. Binary

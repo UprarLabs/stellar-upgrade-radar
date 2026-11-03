@@ -364,6 +364,36 @@ fn sur_1001_sur_1003_adversarial_regressions() {
 }
 
 #[test]
+fn sur_1005_flags_plain_address_contract_params() {
+    let files = files_for("SUR-1005");
+    assert!(
+        files.iter().any(|f| f.contains("contract_address_plain")),
+        "a contract entry point taking `Address` must be reported: {files:?}"
+    );
+    for safe in ["contract_address_muxed", "contract_address_helper"] {
+        assert!(
+            !files.iter().any(|f| f.contains(safe)),
+            "SUR-1005 must not fire on {safe}: {files:?}"
+        );
+    }
+    let f = findings_for("SUR-1005");
+    let plain = f
+        .iter()
+        .find(|x| x.file.contains("contract_address_plain"))
+        .expect("plain Address finding");
+    assert_eq!(plain.severity, Severity::Low);
+    assert_eq!(plain.kind, Kind::ManualReview);
+    assert!(
+        plain.explanation.contains("MuxedAddress"),
+        "explanation must mention the MuxedAddress alternative"
+    );
+    assert!(
+        !plain.sources.is_empty(),
+        "the finding must cite CAP-84 evidence"
+    );
+}
+
+#[test]
 fn sur_1003_flags_old_xdr_and_spares_ms_aware_fixture() {
     let files = files_for("SUR-1003");
     assert!(
@@ -450,7 +480,10 @@ fn clean_fixture_produces_no_findings() {
 fn report_carries_stable_rule_ids_and_evidence() {
     let report = analyze(&fixtures_root(), Severity::Info);
     let ids: Vec<&str> = report.rules.iter().map(|r| r.id.as_str()).collect();
-    assert_eq!(ids, vec!["SUR-1001", "SUR-1002", "SUR-1003", "SUR-1004"]);
+    assert_eq!(
+        ids,
+        vec!["SUR-1001", "SUR-1002", "SUR-1003", "SUR-1004", "SUR-1005"]
+    );
     assert_eq!(report.schema_version, "1.0");
     for f in &report.findings {
         assert!(!f.sources.is_empty(), "{} lacks sources", f.rule_id);
@@ -676,7 +709,10 @@ fn json_summary_counts_are_consistent() {
         .iter()
         .map(|r| r["id"].as_str().unwrap())
         .collect();
-    assert_eq!(ids, vec!["SUR-1001", "SUR-1002", "SUR-1003", "SUR-1004"]);
+    assert_eq!(
+        ids,
+        vec!["SUR-1001", "SUR-1002", "SUR-1003", "SUR-1004", "SUR-1005"]
+    );
 }
 
 #[test]
@@ -762,7 +798,7 @@ fn cli_sarif_output_is_well_formed() {
         .collect();
     assert_eq!(
         rule_ids,
-        vec!["SUR-1001", "SUR-1002", "SUR-1003", "SUR-1004"]
+        vec!["SUR-1001", "SUR-1002", "SUR-1003", "SUR-1004", "SUR-1005"]
     );
     let results = run["results"].as_array().unwrap();
     assert!(!results.is_empty());

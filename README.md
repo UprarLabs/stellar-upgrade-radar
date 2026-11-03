@@ -116,6 +116,7 @@ across releases; a finding never changes from one rule into another.
 | SUR-1002 | CAP-84/88 | High/Medium | High/Medium/Low | Implemented |
 | SUR-1003 | CAP-88  | High     | Medium/Low | Implemented   |
 | SUR-1004 | CAP-88  | Low      | Low        | Manual-review |
+| SUR-1005 | CAP-84  | Low      | Low        | Manual-review |
 
 `SUR-1002` covers Rust (`Cargo.toml` + `Cargo.lock`) plus the JS/TS
 (`package.json` + `package-lock.json`/`yarn.lock`/`pnpm-lock.yaml`), Python
