@@ -394,6 +394,56 @@ fn sur_1005_flags_plain_address_contract_params() {
 }
 
 #[test]
+fn sur_1006_flags_muxed_address_storage_keys() {
+    let files = files_for("SUR-1006");
+    let has = |n: &str| files.iter().any(|f| f.contains(n));
+
+    // MuxedAddress as key -> Medium/Static, for all three storage types.
+    for expected in [
+        "storage_muxed_key",
+        "storage_muxed_temp",
+        "storage_muxed_instance",
+    ] {
+        assert!(has(expected), "missing {expected}: {files:?}");
+    }
+    let f = findings_for("SUR-1006");
+    let muxed = f
+        .iter()
+        .find(|x| x.file.contains("storage_muxed_key"))
+        .expect("muxed key finding");
+    assert_eq!(muxed.severity, Severity::Medium);
+    assert_eq!(muxed.kind, Kind::Static);
+    assert!(
+        muxed.explanation.contains("CAP-84"),
+        "explanation must cite CAP-84"
+    );
+    assert!(
+        !muxed.sources.is_empty(),
+        "the finding must cite the CAP-84 source"
+    );
+
+    // Plain Address key -> Low/ManualReview, never a static defect.
+    let plain = f
+        .iter()
+        .find(|x| x.file.contains("storage_address_key"))
+        .expect("plain address key finding");
+    assert_eq!(plain.severity, Severity::Low);
+    assert_eq!(plain.kind, Kind::ManualReview);
+
+    // Converted and non-address keys must not be flagged.
+    for safe in ["storage_converted_key", "storage_non_address_key"] {
+        assert!(!has(safe), "SUR-1006 must not fire on {safe}: {files:?}");
+    }
+
+    // One finding per key usage.
+    let muxed_count = f
+        .iter()
+        .filter(|x| x.file.contains("storage_muxed_key"))
+        .count();
+    assert_eq!(muxed_count, 1, "must not duplicate a single key usage");
+}
+
+#[test]
 fn sur_1003_flags_old_xdr_and_spares_ms_aware_fixture() {
     let files = files_for("SUR-1003");
     assert!(
@@ -482,7 +532,7 @@ fn report_carries_stable_rule_ids_and_evidence() {
     let ids: Vec<&str> = report.rules.iter().map(|r| r.id.as_str()).collect();
     assert_eq!(
         ids,
-        vec!["SUR-1001", "SUR-1002", "SUR-1003", "SUR-1004", "SUR-1005"]
+        vec!["SUR-1001", "SUR-1002", "SUR-1003", "SUR-1004", "SUR-1005", "SUR-1006",]
     );
     assert_eq!(report.schema_version, "1.0");
     for f in &report.findings {
@@ -711,7 +761,7 @@ fn json_summary_counts_are_consistent() {
         .collect();
     assert_eq!(
         ids,
-        vec!["SUR-1001", "SUR-1002", "SUR-1003", "SUR-1004", "SUR-1005"]
+        vec!["SUR-1001", "SUR-1002", "SUR-1003", "SUR-1004", "SUR-1005", "SUR-1006",]
     );
 }
 
@@ -798,7 +848,7 @@ fn cli_sarif_output_is_well_formed() {
         .collect();
     assert_eq!(
         rule_ids,
-        vec!["SUR-1001", "SUR-1002", "SUR-1003", "SUR-1004", "SUR-1005"]
+        vec!["SUR-1001", "SUR-1002", "SUR-1003", "SUR-1004", "SUR-1005", "SUR-1006",]
     );
     let results = run["results"].as_array().unwrap();
     assert!(!results.is_empty());

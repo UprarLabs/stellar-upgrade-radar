@@ -25,6 +25,7 @@ pub trait Rule: Sync {
 pub mod contract_address;
 pub mod dependency;
 pub mod dependency_sdk;
+pub mod muxed_storage_key;
 pub mod timestamp;
 pub mod w_address;
 pub mod xdr_header;
@@ -37,6 +38,7 @@ pub fn registry() -> Vec<Box<dyn Rule>> {
         Box::new(xdr_header::XdrHeaderRule),
         Box::new(timestamp::TimestampRule),
         Box::new(contract_address::ContractAddressRule),
+        Box::new(muxed_storage_key::MuxedStorageKeyRule),
     ]
 }
 
