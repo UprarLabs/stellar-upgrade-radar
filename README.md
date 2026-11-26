@@ -7,8 +7,9 @@ application readiness.
 
 `stellar-upgrade-radar` scans a Stellar application or indexer for evidence of
 readiness (or risk) around network protocol upgrades. The initial focus is
-Bell, **Protocol 30**, which is scheduled for a mainnet activation vote on
-2026-11-23 (testnet vote 2026-11-03). Protocol 30 bundles three CAPs:
+Bell, **Protocol 30**, which activated on mainnet on 2026-11-23 following
+the validator vote (testnet activated 2026-11-03; the first Protocol 30
+mainnet ledger is 65,633,432). Protocol 30 bundles three CAPs:
 
 - **CAP-84** — muxed contract addresses, surfaced as a new strkey prefix `W`.
   Every application that validates, displays, stores, or routes addresses must
@@ -174,8 +175,9 @@ See [`CONTRIBUTING.md`](CONTRIBUTING.md).
   on that line is detected). Brace counting does not ignore braces inside
   string/char literals, so braces inside literals can mis-track nesting. Arms
   whose `_MS` handling lives in a called helper are out of scope.
-- **Protocol 30 has not yet activated on mainnet** at the time of writing.
-  Findings describe structural risk relative to the announced upgrade.
+- **Protocol 30 activated on mainnet on 2026-11-23.** Findings describe
+  structural risk relative to the live upgrade: applications that have not
+  yet adopted the Protocol 30 changes are exposed now, not at a future date.
 
 # License
 
