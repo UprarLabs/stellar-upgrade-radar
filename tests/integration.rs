@@ -1156,6 +1156,39 @@ fn cli_single_file_scan_exits_1_with_findings() {
 }
 
 #[test]
+fn cli_text_output_includes_notices() {
+    // Regression (#6): the default text output must carry the same
+    // static-analysis notices as the JSON and SARIF reports.
+    let out = Command::new(bin())
+        .args(["check", fixtures_root().join("clean").to_str().unwrap()])
+        .output()
+        .expect("run");
+    assert_eq!(out.status.code(), Some(0));
+    let s = String::from_utf8_lossy(&out.stdout);
+    assert!(
+        s.contains("activated on mainnet on 2026-11-23"),
+        "first notice missing from text output: {s}"
+    );
+    assert!(
+        s.contains("No finding replaces an integration test against a Protocol 30 node or SDK."),
+        "second notice missing from text output: {s}"
+    );
+    // The existing header, summary, and no-findings lines are unchanged.
+    assert!(
+        s.contains("stellar-upgrade-radar 0.1.0 — target:"),
+        "header line changed: {s}"
+    );
+    assert!(
+        s.contains("files scanned: 1   findings: 0"),
+        "summary line changed: {s}"
+    );
+    assert!(
+        s.contains("no findings at severity >= Low"),
+        "no-findings line changed: {s}"
+    );
+}
+
+#[test]
 fn cli_single_clean_file_exits_0() {
     let file = fixtures_root().join("clean").join("safe.rs");
     let out = Command::new(bin())

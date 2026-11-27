@@ -69,6 +69,10 @@ This makes the tool usable as a CI gate: a non-zero exit fails the build.
 
 # Output
 
+The default `--format text` output prints a header and summary line, one
+block per finding, and finally the report's notices — the static-analysis
+caveats that also appear in the JSON `notices` array and the SARIF report.
+
 `--format json` emits a stable-schema report. The shape is versioned by
 `schema_version` (currently `"1.0"`):
 

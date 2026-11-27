@@ -123,6 +123,9 @@ fn run_check(
                     println!("      | {s}");
                 }
             }
+            for n in &report.notices {
+                println!("{n}");
+            }
         }
     }
 

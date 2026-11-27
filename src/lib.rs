@@ -65,7 +65,7 @@ pub fn analyze(root: &Path, min_severity: Severity) -> Report {
 
     // Honest framing about the tool's present capability.
     report.notices.push(
-        "Protocol 30 (Bell) mainnet activation is scheduled for 2026-11-23; this scan is \
+        "Protocol 30 (Bell) activated on mainnet on 2026-11-23; this scan is \
          static and cannot detect runtime-only incompatibilities."
             .to_string(),
     );
