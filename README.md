@@ -53,6 +53,10 @@ stellar-upgrade-radar check /path/to/project --format json
 stellar-upgrade-radar check /path/to/project --min-severity medium
 ```
 
+The path may be a project directory or a single file. A single file is
+scanned on its own, so `files_scanned` is 1 and the exit code reflects that
+file's findings alone.
+
 ## Exit codes
 
 | Code | Meaning |

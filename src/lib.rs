@@ -2,8 +2,8 @@
 //! protocol upgrade compatibility and application readiness.
 //!
 //! Public API:
-//! - [`analyze`] runs the full rule set over a directory and returns a
-//!   [`Report`].
+//! - [`analyze`] runs the full rule set over a directory or a single file
+//!   and returns a [`Report`].
 //! - [`report`], [`rules`], [`scan`], [`sources`] are exposed for tests.
 
 pub mod report;
@@ -22,19 +22,24 @@ pub fn analyze(root: &Path, min_severity: Severity) -> Report {
     let mut report = Report::new(root.to_string_lossy().to_string(), rules_meta());
     let rules = rules::registry();
 
-    let files = scan::collect_files(root);
+    // A file root scans just that one file; a directory root is walked.
+    let contexts: Vec<scan::FileCtx> = if root.is_file() {
+        scan::context_for_single(root).into_iter().collect()
+    } else {
+        scan::collect_files(root)
+            .iter()
+            .filter_map(|path| scan::context_for(root, path))
+            .collect()
+    };
     let mut files_with_findings = 0;
     let mut by_rule: std::collections::HashMap<String, usize> = std::collections::HashMap::new();
 
-    for path in &files {
-        let Some(ctx) = scan::context_for(root, path) else {
-            continue;
-        };
+    for ctx in &contexts {
         report.summary.files_scanned += 1;
 
         let mut file_had = false;
         for rule in &rules {
-            for finding in rule.scan(&ctx) {
+            for finding in rule.scan(ctx) {
                 if finding.severity < min_severity {
                     continue;
                 }

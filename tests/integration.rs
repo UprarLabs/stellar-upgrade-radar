@@ -1109,6 +1109,63 @@ fn cli_sarif_unicode_column_is_codepoint_based() {
 }
 
 #[test]
+fn single_file_scan_reports_findings_and_counts_one_file() {
+    // Regression (#4): a file root must scan that file, not silently return
+    // an empty report.
+    let file = fixtures_root().join("w_address_unsafe.rs");
+    let report = analyze(&file, Severity::Info);
+    assert_eq!(report.summary.files_scanned, 1);
+    assert!(
+        report
+            .findings
+            .iter()
+            .any(|f| f.rule_id == "SUR-1001" && f.file == "w_address_unsafe.rs"),
+        "single-file scan must report the file's findings: {:?}",
+        report.findings
+    );
+    // The single-file findings are exactly the directory scan's findings for
+    // that file.
+    let all = findings();
+    let dir_count = all
+        .iter()
+        .filter(|f| f.file == "w_address_unsafe.rs")
+        .count();
+    assert_eq!(report.findings.len(), dir_count);
+    assert!(dir_count > 0, "the fixture must produce findings");
+}
+
+#[test]
+fn single_clean_file_scan_reports_no_findings() {
+    let file = fixtures_root().join("clean").join("safe.rs");
+    let report = analyze(&file, Severity::Info);
+    assert_eq!(report.summary.files_scanned, 1);
+    assert_eq!(report.summary.findings, 0);
+}
+
+#[test]
+fn cli_single_file_scan_exits_1_with_findings() {
+    let file = fixtures_root().join("w_address_unsafe.rs");
+    let out = Command::new(bin())
+        .args(["check", file.to_str().unwrap(), "--format", "json"])
+        .output()
+        .expect("run");
+    assert_eq!(out.status.code(), Some(1), "findings present => exit 1");
+    let v: serde_json::Value = serde_json::from_slice(&out.stdout).expect("stdout is JSON");
+    assert_eq!(v["summary"]["files_scanned"], 1);
+    assert!(!v["findings"].as_array().unwrap().is_empty());
+}
+
+#[test]
+fn cli_single_clean_file_exits_0() {
+    let file = fixtures_root().join("clean").join("safe.rs");
+    let out = Command::new(bin())
+        .args(["check", file.to_str().unwrap()])
+        .output()
+        .expect("run");
+    assert_eq!(out.status.code(), Some(0), "no findings => exit 0");
+}
+
+#[test]
 fn cli_json_and_text_outputs_are_unchanged_by_sarif_work() {
     // JSON keeps the plain (unencoded) relative path and its own contract.
     let v = run_cli(&[
